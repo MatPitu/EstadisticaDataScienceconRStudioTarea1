@@ -736,7 +736,7 @@ ggplot(data = DatosSegurosModelo, aes(x = Nivel_Ingresos, y = ..count.., fill = 
 ```
 
 
-###### **Estado_Siniestro vs Antigüedad_Maxima**
+###### **Estado_Siniestro vs Puntaje_Morosidad1*
 ```{r Descriptive of Estado_Siniestro vs Puntaje_Morosidad1}
 # if (require("ggplot2")) install.packages("ggplot2")
 # if (require("ggpubr")) install.packages("ggpubr")
@@ -861,7 +861,7 @@ cor.test(DatosSegurosModelo$Saldo_Pendiente_Seg, DatosSegurosModelo$Siniestros1,
 **Conclusión:** Con un nivel de confianza del 95%, se afirma que, existe una correlación positiva muy baja de 0.1118641  = 0.11
 
 #### ** Saldo_Pendiente y Siniestros1**
-**Decision:** Son mutuamente inddependientes.  
+**Decision:** Son mutuamente independientes.  
 **Conclusión:** Con un nivel de confianza del 95%, se afirma que, no existe una correlación entre ambas variables
 
 #### ** Saldo_Pendiente_Seg y Antigüedad_Maxima**
@@ -892,13 +892,13 @@ chisq.test(table(DatosSegurosModelo$Nivel_Ingresos, DatosSegurosModelo$Estado_Si
 
 
 
-### **4. Heterogeneidad de 2 muestras independientes - No Paramétrica: Prueba U de Mann Whitney**
-Ho: U1 = U2, de la Antigüedad Máxima.
-Ha: U1 <> U2, de la Antigüedad Máxima.
+### **4. No Paramétrica: Prueba de Wilcoxon para 2 muestras relacionadas**
+Ho: La mediana de las diferencias de cada par de datos es cero.
+Ha: La mediana de las diferencias de cada par de datos es diferente de cero.
 
-#### **Deseamos comprobar si existe relación entre el Nivel de ingresos y el Estado de Siniestro. Esto con el fin de poder determinar si estas variables están relacionads y considerar al nivel de ingresos como un posible predictor del Estado de Siniestralidad.**
+#### **Deseamos comprobar si la mediana de las diferencias del Número de Siniestros en el 1er Periodo y 2do Periodo es diferente de cero.**
 
-#### **Comprobaremos si existe algún grado de relación entre las variables Nivel de Ingresos y Estado de Siniestro: **
+#### **Prueba de Wilcoxon: **
 ```{r}
 wilcox.test(x = DatosSegurosModelo$Siniestros1, y = DatosSegurosModelo$Siniestros2, alternative = "two.sided", mu = 0, paired = TRUE)
 
