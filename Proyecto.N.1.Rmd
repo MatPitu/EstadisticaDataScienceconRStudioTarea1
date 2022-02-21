@@ -1,0 +1,907 @@
+---
+title: "Proyecto N° 1"
+author: "Mateo Cornejo De la Rosa"
+date: "20/2/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# **Caso N° 1: Siniestros en Seguros**
+
+Se tiene un conjunto de datos simulado basado en seis meses de la información recogida por una aseguradora mundial llamada **"VIDA SEGUROS"**, cuyo objetivo fue desarrollar un modelo para determinar la probabilidad de siniestro en los próximos 12 meses. La variable de destino es la siniestralidad, que representa el estado binario de No Siniestro 0 y Siniestro 1.
+
+## **Descripción de las Variables:**
+
+###### **Cliente_ID:** Identificador de cliente.
+###### **Antigüedad_Maxima:** Antigüedad del cliente en meses.
+###### **Nivel_Ingresos:** Nivel de ingresos de 0 (bajo) a 5 (alto).
+###### **Saldo_Pendiente:** Saldo pendiente del cliente.
+###### **Puntaje_Morosidad:** Tasa de morosidad en el seguro. O: No Dq., 1: 1-29, ..., 6: 150-179.
+###### **Saldo_Pendiente_Seg:** Saldo pendiente de la póliza del seguro.
+###### **Siniestros:** Número de siniestros en la historia del cliente.
+###### **Estado_Siniestro:** 0: No Siniestro, 1: Siniestro.
+
+
+## **Establecemos nuestra ruta de trabajo: **
+```{r Ruta de trabajo}
+setwd('C:/Estadistica.Data.Science.R/Proyecto.20pct')
+getwd()
+```
+
+
+## **Importar la base de datos de nuestro proyecto: **
+```{r Import}
+DatosSeguros <- read.csv("Datos/Data_Siniestros en Seguros .csv", sep=",")
+```
+
+
+## **Vizualizamos los 6 primeros registros: **
+```{r Previzualization}
+head(DatosSeguros)
+```
+Con esta primera vista de los datos, podemos darnos una idea de la forma que debería tener la tabla. En la siguiente salida revisaremos esta estructura.
+
+
+## **Estructura de la base de datos: **
+```{r Structure}
+str(DatosSeguros)
+```
+Revisando la estructura de la tabla encontramos lo siguiente:
+
+#### **Dimensiones:**
+- Nuestra base de datos tiene 5800 registros y 18 variables. También se podría obtener con dim(DatosSeguros).
+
+#### **Variables:**
+###### - **Cliente_ID**: Como es la llave de la tabla, no debería ser entero, porque no vamos a sacar ningún estadístico de resumen. Lo cambiaremos a CARACTER.
+###### - **Antigüedad_Maxima**: El tipo de datos es correcto. Queda como ENTERO.
+###### - **Nivel_Ingresos**: De acuerdo a la formulación del caso, es una variable categórica ordinal (de bajo a alto). Lo cambiaremos a FACTOR.
+###### - **Saldo_Pendiente**: El tipo de datos es correcto. Queda como NUMÉRICO.
+###### - **Puntaje_MorosidadX**: De acuerdo a la formulación del caso, es una variable categórica ordinal (Rangos de score). Lo cambiaremos a FACTOR.
+###### - **Saldo_Pendiente_Seg**: El tipo de datos es correcto. Queda como NUMÉRICO.
+###### - **SiniestrosX**: El tipo de datos es correcto. Queda como ENTERO.
+###### - **Estado_Siniestro**: De acuerdo a la formulación del caso, es nuestra variable objetivo,  de momento lo dejaremos en caracter porque debemos hacer una limpieza de la base de datos. Luego lo cambiaremos a FACTOR.
+
+
+## **Conversión del Tipo de variables: **
+```{r Convert of Variables}
+
+DatosSeguros$Cliente_ID <- as.character(DatosSeguros$Cliente_ID) 
+DatosSeguros$Nivel_Ingresos <- as.factor(as.character(DatosSeguros$Nivel_Ingresos)) 
+DatosSeguros$Puntaje_Morosidad1 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad1)) 
+DatosSeguros$Puntaje_Morosidad2 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad2))
+DatosSeguros$Puntaje_Morosidad3 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad3)) 
+DatosSeguros$Puntaje_Morosidad4 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad4)) 
+DatosSeguros$Puntaje_Morosidad5 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad5))
+DatosSeguros$Puntaje_Morosidad6 <- as.factor(as.character(DatosSeguros$Puntaje_Morosidad6))
+
+str(DatosSeguros)
+```
+Ahora las variables tienen su correcto tipo de datos. Revisemos la variable Estado_Siniestro.
+
+
+## **Target: Estado_Siniestro: **
+```{r Frequency of Estado_Siniestro}
+table(DatosSeguros$Estado_Siniestro)
+round(table(DatosSeguros$Estado_Siniestro) / nrow(DatosSeguros) * 100, 2)
+```
+Podemos obsevar que hay 1,068 casos que no tiene etique (si/no). Al parecer la base de datos contiene una base de 4,732 registros para hacer el modelo y 1,068 para la predicción. Por lo tanto, vamos a separar las bases y nos quedamos con la base con 4,732 registros.
+
+
+## **Guardar nuestros datasets: **
+```{r Saving datasets}
+DatosSegurosModelo <- DatosSeguros[DatosSeguros$Estado_Siniestro != '', ]
+DatosSegurosPrediccion <- DatosSeguros[DatosSeguros$Estado_Siniestro == '', ]
+
+save(DatosSegurosModelo, file = 'Datos/DatosSegurosModelo.RData')
+save(DatosSegurosPrediccion, file = 'Datos/DatosSegurosPrediccion.RData')
+```
+Desde ahora trabajaremos con el Dataset **DatosSegurosModelo**. Previamente cambiando el tipo de variable de Estado_Siniestro a Factor
+
+
+#### **Resumen del dataset:**
+```{r Summary}
+DatosSegurosModelo$Estado_Siniestro <- as.factor(DatosSegurosModelo$Estado_Siniestro)
+summary(DatosSegurosModelo)
+round(table(DatosSegurosModelo$Estado_Siniestro)/nrow(DatosSegurosModelo) * 100,2)
+```
+Con este vistazo inicial de los datos, podemos ir analizando la información:
+
+**Antigüedad_Maxima**: Presenta 482 datos perdidos, así como indicio de outliers.
+**Nivel_Ingresos**: Presenta 231 datos perdidos, así como indicio de outliers.
+**Saldo_Pendiente**: Presenta indicio de outliers.
+**Puntaje_MorosidadX**: Presenta sesgo hacia la derecha. Aunque este comportamiento es natural, porque son muchos los que tienen No presentan mora. Se debe revisar la distribución.
+**Saldo_Pendiente_Seg**: Presenta sesgo hacia la izquierda. Aunque este comportamiento es natural, porque son muchos los que tienen No presentan saldo pendiente. Se debe revisar la distribución.
+**Siniestros1**: Presenta sesgo hacia la izquierda. Aunque este comportamiento es natural, porque son muchos los que tienen No presentan Siniestro. Se debe revisar la distribución.
+**Estado_Siniestro**: Alredor de 10.48% de casos presenta Siniestro.
+
+
+
+## **APLICANDO ESTADÍSTICA DESCRIPTIVA**
+
+### **1. Antigüedad_Maxima: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Antigüedad_Maxima 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Antigüedad_Maxima, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Antigüedad_Maxima, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Antigüedad_Maxima, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Antigüedad_Maxima, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Antigüedad_Maxima, main= "Histograma de la variable Antigüedad Máxima")
+abline(v=mean(DatosSegurosModelo$Antigüedad_Maxima, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Antigüedad_Maxima, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Antigüedad_Maxima, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Antigüedad_Maxima, main= "Boxplot de la variable Antigüedad Máxima")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Antigüedad_Maxima 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Antigüedad_Maxima, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Antigüedad_Maxima, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Antigüedad_Maxima, na.rm = TRUE) / mean(DatosSegurosModelo$Antigüedad_Maxima, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Antigüedad_Maxima 3}
+library(e1071)
+skewness(DatosSegurosModelo$Antigüedad_Maxima, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Antigüedad_Maxima, na.rm = TRUE)
+```
+
+
+
+### **2. Nivel de Ingresos: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Nivel_Ingresos 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Nivel_Ingresos, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Nivel_Ingresos)
+round(table(DatosSegurosModelo$Nivel_Ingresos) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Nivel_Ingresos), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Nivel_Ingresos) - 50, labels = table(DatosSegurosModelo$Nivel_Ingresos))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Nivel_Ingresos)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Nivel_Ingresos)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Nivel_Ingresos)), 4)*100)
+
+```
+
+
+### **3. Saldo Pendiente: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Saldo_Pendiente 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Saldo_Pendiente, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Saldo_Pendiente, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Saldo_Pendiente, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Saldo_Pendiente, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Saldo_Pendiente, main= "Histograma de la variable Saldo Pendiente")
+abline(v=mean(DatosSegurosModelo$Saldo_Pendiente, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Saldo_Pendiente, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Saldo_Pendiente, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Saldo_Pendiente, main= "Boxplot de la variable Saldo Pendiente")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Saldo_Pendiente 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Saldo_Pendiente, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Saldo_Pendiente, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Saldo_Pendiente, na.rm = TRUE) / mean(DatosSegurosModelo$Saldo_Pendiente, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Saldo_Pendiente 3}
+library(e1071)
+skewness(DatosSegurosModelo$Saldo_Pendiente, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Saldo_Pendiente, na.rm = TRUE)
+```
+
+
+
+### **4. Puntaje Morosidad 1: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad1 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad1, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad1)
+round(table(DatosSegurosModelo$Puntaje_Morosidad1) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad1), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad1) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad1))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad1)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad1)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad1)), 4)*100)
+
+```
+
+### **5. Puntaje Morosidad 2: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad2 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad2, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad2)
+round(table(DatosSegurosModelo$Puntaje_Morosidad2) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad2), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad2) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad2))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad2)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad2)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad2)), 4)*100)
+
+```
+
+### **6. Puntaje Morosidad 3: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad3 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad3, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad3)
+round(table(DatosSegurosModelo$Puntaje_Morosidad3) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad3), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad3) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad3))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad3)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad3)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad3)), 4)*100)
+
+```
+
+
+### **7. Puntaje Morosidad 4: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad4 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad4, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad4)
+round(table(DatosSegurosModelo$Puntaje_Morosidad4) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad4), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad4) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad4))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad4)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad4)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad4)), 4)*100)
+
+```
+
+
+### **8. Puntaje Morosidad 5: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad5 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad5, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad5)
+round(table(DatosSegurosModelo$Puntaje_Morosidad5) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad5), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad5) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad5))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad5)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad5)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad5)), 4)*100)
+
+```
+
+
+### **9. Puntaje Morosidad 6: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Puntaje_Morosidad6 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Puntaje_Morosidad6, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Puntaje_Morosidad6)
+round(table(DatosSegurosModelo$Puntaje_Morosidad6) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Puntaje_Morosidad6), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Puntaje_Morosidad6) - 50, labels = table(DatosSegurosModelo$Puntaje_Morosidad6))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad6)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Puntaje_Morosidad6)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Puntaje_Morosidad6)), 4)*100)
+
+```
+
+
+### **10. Saldo Pendiente Seguro: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Saldo_Pendiente_Seg 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Saldo_Pendiente_Seg, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Saldo_Pendiente_Seg, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Saldo_Pendiente_Seg, main= "Histograma de la variable Saldo Pendiente Seguro")
+abline(v=mean(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Saldo_Pendiente_Seg, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Saldo_Pendiente_Seg, main= "Boxplot de la variable Saldo Pendiente Seguro")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Saldo_Pendiente_Seg 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = TRUE) / mean(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Saldo_Pendiente_Seg 3}
+library(e1071)
+skewness(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Saldo_Pendiente_Seg, na.rm = TRUE)
+```
+
+
+### **11. Siniestros1: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros1 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros1, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros1, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros1, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros1, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros1, main= "Histograma de la variable Siniestros 1")
+abline(v=mean(DatosSegurosModelo$Siniestros1, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros1, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros1, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros1, main= "Boxplot de la variable Siniestros 1")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros1 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros1, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros1, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros1, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros1, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros1 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros1, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros1, na.rm = TRUE)
+```
+
+
+### **12. Siniestros2: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros2 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros2, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros2, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros2, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros2, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros2, main= "Histograma de la variable Siniestros 2")
+abline(v=mean(DatosSegurosModelo$Siniestros2, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros2, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros2, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros2, main= "Boxplot de la variable Siniestros 2")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros2 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros2, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros2, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros2, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros2, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros2 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros2, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros2, na.rm = TRUE)
+```
+
+
+### **13. Siniestros3: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros3 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros3, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros3, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros3, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros3, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros3, main= "Histograma de la variable Siniestros 3")
+abline(v=mean(DatosSegurosModelo$Siniestros3, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros3, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros3, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros3, main= "Boxplot de la variable Siniestros 3")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros3 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros3, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros3, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros3, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros3, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros3 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros3, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros3, na.rm = TRUE)
+```
+
+
+### **14. Siniestros4: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros4 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros4, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros4, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros4, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros4, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros4, main= "Histograma de la variable Siniestros 4")
+abline(v=mean(DatosSegurosModelo$Siniestros4, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros4, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros4, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros4, main= "Boxplot de la variable Siniestros 4")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros4 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros4, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros4, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros4, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros4, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros4 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros4, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros4, na.rm = TRUE)
+```
+
+
+### **15. Siniestros5: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros5 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros5, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros5, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros5, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros5, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros5, main= "Histograma de la variable Siniestros 5")
+abline(v=mean(DatosSegurosModelo$Siniestros5, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros5, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros5, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros5, main= "Boxplot de la variable Siniestros 5")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros5 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros5, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros5, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros5, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros5, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros5 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros5, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros5, na.rm = TRUE)
+```
+
+
+### **16. Siniestros6: **
+
+#### **Medidas de Tendencia Central y Medidas de Posición: **
+```{r Descriptive of Siniestros6 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Media = ', mean(DatosSegurosModelo$Siniestros6, na.rm = T))
+paste('Mediana = ', median(DatosSegurosModelo$Siniestros6, na.rm = T))
+paste('Moda = ', mlv(DatosSegurosModelo$Siniestros6, method = "mfv", na.rm = T))
+
+paste('Percentiles:')
+quantile(DatosSegurosModelo$Siniestros6, c(0.01, 0.05, 0.10, 0.20, 0.25, 0.30, 0.40, 0.50, 0.60, 0.70, 0.75, 0.80, 0.90, 0.95, 0.99), na.rm = T)
+
+paste('Histograma:')
+hist(DatosSegurosModelo$Siniestros6, main= "Histograma de la variable Siniestros 6")
+abline(v=mean(DatosSegurosModelo$Siniestros6, na.rm = T), col="red")
+abline(v=median(DatosSegurosModelo$Siniestros6, na.rm = T), col="blue")
+abline(v=mlv(DatosSegurosModelo$Siniestros6, method = "mfv", na.rm = T), col="green")
+
+paste('Boxplot:')
+boxplot(DatosSegurosModelo$Siniestros6, main= "Boxplot de la variable Siniestros 6")
+```
+#### **Medidas de Dispersión: **
+```{r Descriptive of Siniestros6 2}
+paste('Desviación Estándar: ', sd(DatosSegurosModelo$Siniestros6, na.rm = TRUE))
+paste('Varianza: ', sd(DatosSegurosModelo$Siniestros6, na.rm = TRUE)^2)
+paste('Coeficiente de Variación: ', sd(DatosSegurosModelo$Siniestros6, na.rm = TRUE) / mean(DatosSegurosModelo$Siniestros6, na.rm = T) * 100)
+```
+
+
+#### **Asimetría y Curtosis: **
+```{r Descriptive of Siniestros6 3}
+library(e1071)
+skewness(DatosSegurosModelo$Siniestros6, na.rm = TRUE)
+kurtosis(DatosSegurosModelo$Siniestros6, na.rm = TRUE)
+```
+
+
+
+
+
+### **17. Estado Siniestro: **
+
+#### **Frecuencia Absoluta y Frecuencia Relativa**
+```{r Descriptive of Estado_Siniestro 1}
+# if (require("modeest")) install.packages("modeest")
+library('modeest')
+paste('Moda = ', mlv(DatosSegurosModelo$Estado_Siniestro, method = "mfv", na.rm = T))
+
+table(DatosSegurosModelo$Estado_Siniestro)
+round(table(DatosSegurosModelo$Estado_Siniestro) / nrow(DatosSegurosModelo) * 100, 2)
+
+a <- barplot(table(DatosSegurosModelo$Estado_Siniestro), main = 'Frecuencia Abosoluta de Nivel de Ingresos', col = rainbow(6))
+text(a, table(DatosSegurosModelo$Estado_Siniestro) - 50, labels = table(DatosSegurosModelo$Estado_Siniestro))
+
+b <- barplot(prop.table(table(DatosSegurosModelo$Estado_Siniestro)), main = 'Frecuencia Relativa de Nivel de Ingresos', col = rainbow(6))
+text(b, prop.table(table(DatosSegurosModelo$Estado_Siniestro)) - 0.01, labels = round(prop.table(table(DatosSegurosModelo$Estado_Siniestro)), 4)*100)
+
+```
+
+#### **Versus Variables Continuas**
+
+###### **Estado_Siniestro vs Antigüedad_Maxima**
+```{r Descriptive of Estado_Siniestro vs Antigüedad_Maxima}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+p1 <- ggplot(data = DatosSegurosModelo, aes(x = Antigüedad_Maxima, fill = Estado_Siniestro)) +
+      geom_density(alpha = 0.5) +
+      scale_fill_manual(values = c("gray50", "orangered2")) +
+      geom_rug(aes(color = Estado_Siniestro), alpha = 0.5) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+p2 <- ggplot(data = DatosSegurosModelo, aes(x = Estado_Siniestro, y = Antigüedad_Maxima, color = Estado_Siniestro)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(alpha = 0.3, width = 0.15) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+final_plot <- ggarrange(p1, p2, legend = "top")
+final_plot <- annotate_figure(final_plot, top = text_grob("Antigüedad Máxima", size = 15))
+final_plot
+```
+
+
+###### **Estado_Siniestro vs Saldo_Pendiente**
+```{r Descriptive of Estado_Siniestro vs Saldo_Pendiente}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+p1 <- ggplot(data = DatosSegurosModelo, aes(x = Saldo_Pendiente, fill = Estado_Siniestro)) +
+      geom_density(alpha = 0.5) +
+      scale_fill_manual(values = c("gray50", "orangered2")) +
+      geom_rug(aes(color = Estado_Siniestro), alpha = 0.5) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+p2 <- ggplot(data = DatosSegurosModelo, aes(x = Estado_Siniestro, y = Saldo_Pendiente, color = Estado_Siniestro)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(alpha = 0.3, width = 0.15) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+final_plot <- ggarrange(p1, p2, legend = "top")
+final_plot <- annotate_figure(final_plot, top = text_grob("Saldo Pendiente", size = 15))
+final_plot
+```
+
+###### **Estado_Siniestro vs Saldo_Pendiente_Seg**
+```{r Descriptive of Estado_Siniestro vs Saldo_Pendiente_Seg}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+p1 <- ggplot(data = DatosSegurosModelo, aes(x = Saldo_Pendiente_Seg, fill = Estado_Siniestro)) +
+      geom_density(alpha = 0.5) +
+      scale_fill_manual(values = c("gray50", "orangered2")) +
+      geom_rug(aes(color = Estado_Siniestro), alpha = 0.5) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+p2 <- ggplot(data = DatosSegurosModelo, aes(x = Estado_Siniestro, y = Saldo_Pendiente_Seg, color = Estado_Siniestro)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(alpha = 0.3, width = 0.15) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+final_plot <- ggarrange(p1, p2, legend = "top")
+final_plot <- annotate_figure(final_plot, top = text_grob("Saldo Pendiente Seguro", size = 15))
+final_plot
+```
+
+
+###### **Estado_Siniestro vs Siniestros1**
+```{r Descriptive of Estado_Siniestro vs Siniestros1}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+p1 <- ggplot(data = DatosSegurosModelo, aes(x = Siniestros1, fill = Estado_Siniestro)) +
+      geom_density(alpha = 0.5) +
+      scale_fill_manual(values = c("gray50", "orangered2")) +
+      geom_rug(aes(color = Estado_Siniestro), alpha = 0.5) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+p2 <- ggplot(data = DatosSegurosModelo, aes(x = Estado_Siniestro, y = Siniestros1, color = Estado_Siniestro)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(alpha = 0.3, width = 0.15) +
+      scale_color_manual(values = c("gray50", "orangered2")) +
+      theme_bw()
+final_plot <- ggarrange(p1, p2, legend = "top")
+final_plot <- annotate_figure(final_plot, top = text_grob("Siniestros 1", size = 15))
+final_plot
+```
+
+
+
+#### **Versus Variables Categóricas**
+
+###### **Estado_Siniestro vs Nivel_Ingresos**
+```{r Descriptive of Estado_Siniestro vs Nivel_Ingresos}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+ggplot(data = DatosSegurosModelo, aes(x = Nivel_Ingresos, y = ..count.., fill = Estado_Siniestro)) +
+  geom_bar() +
+  scale_fill_manual(values = c("gray50", "orangered2")) +
+  labs(title = "Nivel de Ingresos") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+###### **Estado_Siniestro vs Antigüedad_Maxima**
+```{r Descriptive of Estado_Siniestro vs Puntaje_Morosidad1}
+# if (require("ggplot2")) install.packages("ggplot2")
+# if (require("ggpubr")) install.packages("ggpubr")
+library(ggplot2)
+library(ggpubr)
+ggplot(data = DatosSegurosModelo, aes(x = Puntaje_Morosidad1, y = ..count.., fill = Estado_Siniestro)) +
+  geom_bar() +
+  scale_fill_manual(values = c("gray50", "orangered2")) +
+  labs(title = "Puntaje_Morosidad1") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+
+
+## Estadística Inferencial
+
+Como hemos podido observar de acuerdo a los gráficos y frecuencias anteriormente calculados, es muy difícil que tengamos variables con distribución normal. Muchas de las variables que hemos encontrado son sesgadas (Antigüedad Máxima, Saldo Pendiente, Saldo Pendiente Seguro) y otras están concentradas en sólo algunos niveles de variables cualitativas, lo que hace necesario unir algunos niveles y poder realizar algunas pruebas estadísticas que encuentren alguna asociación o relación con nuestra variable target Estado de Siniestro.
+
+
+### **1. Pruebas de Normalidad**
+Ho: Los datos están normalmente distribuidos.
+Ha: Los datos no están normalmente distribuidos.
+
+#### **Comprobamos que las variables contínuas Antigüeda Máxima, Saldo Pendiente, Saldo Pendiente Seguro y SiniestrosX no tienen distribución normal**
+```{r}
+# Test: Kolmogorov-Smirnov "para la prueba de normalidad, n>50 casos"
+library(nortest) 
+lillie.test(DatosSegurosModelo$Antigüedad_Maxima)$p.value
+lillie.test(DatosSegurosModelo$Saldo_Pendiente)$p.value
+lillie.test(DatosSegurosModelo$Saldo_Pendiente_Seg)$p.value
+lillie.test(DatosSegurosModelo$Siniestros1)$p.value
+lillie.test(DatosSegurosModelo$Siniestros2)$p.value
+lillie.test(DatosSegurosModelo$Siniestros3)$p.value
+lillie.test(DatosSegurosModelo$Siniestros4)$p.value
+lillie.test(DatosSegurosModelo$Siniestros5)$p.value
+lillie.test(DatosSegurosModelo$Siniestros6)$p.value
+
+qqnorm(DatosSegurosModelo$Antigüedad_Maxima)
+qqline(DatosSegurosModelo$Antigüedad_Maxima)
+
+qqnorm(DatosSegurosModelo$Saldo_Pendiente)
+qqline(DatosSegurosModelo$Saldo_Pendiente)
+
+qqnorm(DatosSegurosModelo$Saldo_Pendiente_Seg)
+qqline(DatosSegurosModelo$Saldo_Pendiente_Seg)
+
+qqnorm(DatosSegurosModelo$Siniestros1)
+qqline(DatosSegurosModelo$Siniestros1)
+
+qqnorm(DatosSegurosModelo$Siniestros2)
+qqline(DatosSegurosModelo$Siniestros2)
+
+qqnorm(DatosSegurosModelo$Siniestros3)
+qqline(DatosSegurosModelo$Siniestros3)
+
+qqnorm(DatosSegurosModelo$Siniestros4)
+qqline(DatosSegurosModelo$Siniestros4)
+
+qqnorm(DatosSegurosModelo$Siniestros5)
+qqline(DatosSegurosModelo$Siniestros5)
+
+qqnorm(DatosSegurosModelo$Siniestros6)
+qqline(DatosSegurosModelo$Siniestros6)
+```
+**Antiguedad Máxima**
+**Decisión:** Los datos de la variable no están normalmente distribuidos (p-value: 2.862152e-269); considerando un nivel de confianza del 95% o nivel de significancia del 5%. 
+
+**Saldo Pendiente**
+**Decisión:** Los datos de la variable no están normalmente distribuidos (p-value: 0); considerando un nivel de confianza del 95% o nivel de significancia del 5%. 
+
+**Saldo Pendiente Seguro**
+**Decisión:** Los datos de la variable no están normalmente distribuidos (p-value: 0); considerando un nivel de confianza del 95% o nivel de significancia del 5%. 
+
+**Siniestros**
+**Decisión:** Los datos de la variables SiniestrosX no están normalmente distribuidos (p-value: 0); considerando un nivel de confianza del 95% o nivel de significancia del 5%. 
+
+
+#### **Tampoco se vuelven normales haciendo una transformación (ejemplo raíz cuadrada):**
+```{r}
+# Test: Kolmogorov-Smirnov "para la prueba de normalidad, n>50 casos"
+library(nortest) 
+lillie.test(sqrt(DatosSegurosModelo$Antigüedad_Maxima))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Saldo_Pendiente))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Saldo_Pendiente_Seg))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros1))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros2))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros3))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros4))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros5))$p.value
+lillie.test(sqrt(DatosSegurosModelo$Siniestros6))$p.value
+```
+
+
+### **2. Correlación No Paramétrica: Rho de Spearman**
+Ho: Las variables A y B son mutuamente independientes.
+Ha: Las variables A y B son mutuamente dependientes.
+
+#### **Comprobamos que de las variables contínuas Antigüeda Máxima, Saldo Pendiente, Saldo Pendiente Seguro y Siniestros1, solo Saldo_Pendiente y Siniestros1 son mutuamente independientes, las demás combinaciones de 2 en 2 son mutuamente dependientes**
+
+#### **Comprobaremos si existe algún grado de asociación entre las variables mencionadas: **
+```{r}
+library(statsr)
+cor.test(DatosSegurosModelo$Saldo_Pendiente, DatosSegurosModelo$Saldo_Pendiente_Seg, method = 'spearman')
+
+cor.test(DatosSegurosModelo$Saldo_Pendiente, DatosSegurosModelo$Antigüedad_Maxima, method = 'spearman')
+
+cor.test(DatosSegurosModelo$Saldo_Pendiente, DatosSegurosModelo$Siniestros1, method = 'spearman')
+
+cor.test(DatosSegurosModelo$Saldo_Pendiente_Seg, DatosSegurosModelo$Antigüedad_Maxima, method = 'spearman')
+
+cor.test(DatosSegurosModelo$Saldo_Pendiente_Seg, DatosSegurosModelo$Siniestros1, method = 'spearman')
+
+```
+
+#### ** Saldo_Pendiente y Saldo_Pendiente_Seg**
+**Decision:** Son mutuamente dependientes.  
+**Conclusión:** Con un nivel de confianza del 95%, se afirma que, existe una correlación positiva muy baja de 0.1661189  = 0.17
+
+#### ** Saldo_Pendiente y Antigüedad_Maxima**
+**Decision:** Son mutuamente dependientes.  
+**Conclusión:** Con un nivel de confianza del 95%, se afirma que, existe una correlación positiva muy baja de 0.1118641  = 0.11
+
+#### ** Saldo_Pendiente y Siniestros1**
+**Decision:** Son mutuamente inddependientes.  
+**Conclusión:** Con un nivel de confianza del 95%, se afirma que, no existe una correlación entre ambas variables
+
+#### ** Saldo_Pendiente_Seg y Antigüedad_Maxima**
+**Decision:** Son mutuamente dependientes.  
+**Conclusión:** Con un nivel de confianza del 95%, se afirma que, existe una correlación positiva muy baja de 0.1400135  = 0.14
+
+#### ** Saldo_Pendiente_Seg y Siniestros1**
+**Decision:** Son mutuamente dependientes.  
+**Conclusión:** Con un nivel de confianza del 95%, se afirma que, existe una correlación negativa muy baja de -0.07830755  = -0.08
+
+
+
+### **3. Correlación No Paramétrica: Prueba Chi-cuadrada**
+Ho: Las variables A y B son mutuamente independientes.
+Ha: Las variables A y B son mutuamente dependientes.
+
+#### **Deseamos comprobar si existe relación entre el Nivel de ingresos y el Estado de Siniestro. Esto con el fin de poder determinar si estas variables están relacionads y considerar al nivel de ingresos como un posible predictor del Estado de Siniestralidad.**
+
+#### **Comprobaremos si existe algún grado de relación entre las variables Nivel de Ingresos y Estado de Siniestro: **
+```{r}
+chisq.test(table(DatosSegurosModelo$Nivel_Ingresos, DatosSegurosModelo$Estado_Siniestro))
+
+```
+**Decision:** Las variables Nivel de Ingresos y Estado Siniestro son mutuamente dependientes. Con un nivel de confianza del 95%, se afirma que ambas variables están relacionados.
+
+
+
+
+
+
+### **4. Heterogeneidad de 2 muestras independientes - No Paramétrica: Prueba U de Mann Whitney**
+Ho: U1 = U2, de la Antigüedad Máxima.
+Ha: U1 <> U2, de la Antigüedad Máxima.
+
+#### **Deseamos comprobar si existe relación entre el Nivel de ingresos y el Estado de Siniestro. Esto con el fin de poder determinar si estas variables están relacionads y considerar al nivel de ingresos como un posible predictor del Estado de Siniestralidad.**
+
+#### **Comprobaremos si existe algún grado de relación entre las variables Nivel de Ingresos y Estado de Siniestro: **
+```{r}
+wilcox.test(x = DatosSegurosModelo$Siniestros1, y = DatosSegurosModelo$Siniestros2, alternative = "two.sided", mu = 0, paired = TRUE)
+
+```
+**Decision:** La mediana de las diferencias del Número de Siniestros en el 1er Periodo y 2do Periodo es diferente de cero.
+
